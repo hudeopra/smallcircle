@@ -22,7 +22,7 @@ router.get('/available-funds', async (req, res) => {
     // Calculate total interest earned from completed loans
     const completedLoans = await Loan.find({ status: 'paid' });
     let totalInterestEarned = 0;
-    
+
     for (const loan of completedLoans) {
       const loanPayments = await Payment.aggregate([
         { $match: { loan: loan._id, status: 'completed' } },
@@ -41,7 +41,7 @@ router.get('/available-funds', async (req, res) => {
     const availableFunds = Math.max(0, totalContributions + totalInterestEarned - totalActiveLoans);
 
     res.json({
-      success: true,      data: {
+      success: true, data: {
         availableFunds,
         totalContributions,
         totalRepayments,

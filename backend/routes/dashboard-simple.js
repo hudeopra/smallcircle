@@ -54,7 +54,7 @@ router.get('/', async (req, res) => {
       // Only count interest from loans that have been fully paid
       const loanPayments = await Payment.find({ loan: loan._id, status: 'completed' });
       const totalPaidForLoan = loanPayments.reduce((sum, payment) => sum + payment.amount, 0);
-      
+
       // Interest is only the amount paid above the original principal
       const interestFromLoan = Math.max(0, totalPaidForLoan - loan.amount);
       totalInterestEarned += interestFromLoan;

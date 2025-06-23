@@ -7,19 +7,46 @@ class MoneyManager {
         this.pendingUserId = null; // For email verification
         this.monthlyContribution = 500; // Default monthly contribution
         this.interestRate = 0.20; // 20% annual interest
-        this.apiBaseUrl = 'https://smallcircle-backend.onrender.com/api';
+        // Auto-detect API base URL based on environment
+        this.apiBaseUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+            ? 'http://localhost:5000/api' 
+            : 'https://smallcircle-backend.onrender.com/api';
         this.init();
-    }
-
-    async init() {
+    }    async init() {
         try {
+            console.log('Initializing MoneyManager with API URL:', this.apiBaseUrl);
+            
+            // Test backend connectivity first
+            await this.testBackendConnection();
+            
             await this.loadUsers();
             this.loadDashboard();
             this.setupEventListeners();
             await this.updateDashboardStats();
+            console.log('MoneyManager initialized successfully');
         } catch (error) {
             console.error('Initialization error:', error);
-            this.showToast('Failed to initialize app. Please check backend connection.', 'error');
+            console.error('API Base URL:', this.apiBaseUrl);
+              // Check if it's a network error
+            if (error.message.includes('fetch') || error.message.includes('network') || error.message.includes('Failed to fetch') || error.message.includes('Cannot connect to backend')) {
+                this.showBackendErrorMessage();
+            } else {
+                this.showToast('Failed to initialize app: ' + error.message, 'error');
+            }
+        }
+    }
+
+    async testBackendConnection() {
+        try {
+            console.log('Testing backend connection...');
+            const response = await fetch(`${this.apiBaseUrl}/dashboard`);
+            if (!response.ok) {
+                throw new Error(`Backend returned ${response.status}: ${response.statusText}`);
+            }
+            console.log('Backend connection successful');
+        } catch (error) {
+            console.error('Backend connection failed:', error);
+            throw new Error(`Cannot connect to backend at ${this.apiBaseUrl}. ${error.message}`);
         }
     }
 
@@ -1011,6 +1038,35 @@ class MoneyManager {
             month: 'long',
             day: 'numeric'
         });
+    }
+
+    showBackendErrorMessage() {
+        const dashboard = document.getElementById('dashboard');
+        dashboard.innerHTML = `
+            <div class="container" style="text-align: center; padding: 50px;">
+                <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 30px; margin: 20px auto; max-width: 600px;">
+                    <h2 style="color: #856404; margin-bottom: 20px;">
+                        <i class="fas fa-exclamation-triangle"></i> Backend Connection Error
+                    </h2>
+                    <p style="color: #856404; margin-bottom: 20px;">
+                        Cannot connect to the backend server at: <br>
+                        <code style="background: #f8f9fa; padding: 5px; border-radius: 4px;">${this.apiBaseUrl}</code>
+                    </p>
+                    <div style="text-align: left; background: #f8f9fa; padding: 15px; border-radius: 4px; margin: 20px 0;">
+                        <h4 style="margin: 0 0 10px 0;">If you're the developer:</h4>
+                        <ul style="margin: 0; padding-left: 20px;">
+                            <li>Make sure the backend server is running</li>
+                            <li>Check if the backend URL is correct</li>
+                            <li>Verify CORS settings on the backend</li>
+                            <li>Check browser console for more details</li>
+                        </ul>
+                    </div>
+                    <button class="btn btn-primary" onclick="location.reload()">
+                        <i class="fas fa-redo"></i> Retry Connection
+                    </button>
+                </div>
+            </div>
+        `;
     }
 }
 
