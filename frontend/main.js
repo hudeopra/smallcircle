@@ -5,8 +5,8 @@ class MoneyManager {
         this.currentUserId = null;
         this.currentLoanId = null;        this.monthlyContribution = 500; // Default monthly contribution
         this.interestRate = 0.20; // 20% annual interest
-        // Update this URL to your Render backend URL when deployed
-        this.apiBaseUrl = 'https://your-smallcircle-backend.render.com/api';
+        // Backend API URL - Connected to Render deployment
+        this.apiBaseUrl = 'https://smallcircle-backend.onrender.com/api';
         this.init();
     }
 
