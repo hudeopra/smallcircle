@@ -48,41 +48,58 @@ class MoneyManager {
             console.error('Backend connection failed:', error);
             throw new Error(`Cannot connect to backend at ${this.apiBaseUrl}. ${error.message}`);
         }
-    }
+    }    setupEventListeners() {
+        // Helper function to safely add event listeners
+        const addEventListenerSafely = (elementId, event, handler) => {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.addEventListener(event, handler);
+                console.log(`Event listener added for ${elementId}`);
+            } else {
+                console.warn(`Element with ID '${elementId}' not found, skipping event listener`);
+            }
+        };
 
-    setupEventListeners() {
         // Create User Form
-        document.getElementById('createUserForm').addEventListener('submit', (e) => {
+        addEventListenerSafely('createUserForm', 'submit', (e) => {
             e.preventDefault();
             this.createUser();
         });
 
         // Loan Form
-        document.getElementById('loanForm').addEventListener('submit', (e) => {
+        addEventListenerSafely('loanForm', 'submit', (e) => {
             e.preventDefault();
             this.applyForLoan();
         });
 
         // Loan Amount Input - Real-time calculation and validation
-        document.getElementById('loanAmount').addEventListener('input', (e) => {
+        addEventListenerSafely('loanAmount', 'input', (e) => {
             const amount = parseFloat(e.target.value) || 0;
             this.calculateLoanDetails(amount);
             this.validateLoanAmount(amount);
         });
 
         // Payment Form
-        document.getElementById('paymentForm').addEventListener('submit', (e) => {
+        addEventListenerSafely('paymentForm', 'submit', (e) => {
             e.preventDefault();
             this.makePayment();
-        });    // Payment type radio buttons
-        document.querySelectorAll('input[name="paymentType"]').forEach(radio => {
-            radio.addEventListener('change', (e) => {
-                this.togglePartialPaymentInput(e.target.value);
-            });
         });
 
+        // Payment type radio buttons
+        const paymentTypeRadios = document.querySelectorAll('input[name="paymentType"]');
+        if (paymentTypeRadios.length > 0) {
+            paymentTypeRadios.forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    this.togglePartialPaymentInput(e.target.value);
+                });
+            });
+            console.log(`Event listeners added for ${paymentTypeRadios.length} payment type radios`);
+        } else {
+            console.warn('Payment type radio buttons not found, skipping event listeners');
+        }
+
         // Email Verification Form
-        document.getElementById('emailVerificationForm').addEventListener('submit', (e) => {
+        addEventListenerSafely('emailVerificationForm', 'submit', (e) => {
             e.preventDefault();
             this.verifyEmailAndShowDetails();
         });
@@ -1070,41 +1087,53 @@ class MoneyManager {
     }
 }
 
-// Initialize the app
-const app = new MoneyManager();
+// Initialize the app when DOM is fully loaded
+let app;
+
+// Wait for DOM to be fully loaded before initializing
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log('DOM fully loaded, initializing MoneyManager...');
+        app = new MoneyManager();
+    });
+} else {
+    // DOM is already loaded
+    console.log('DOM already loaded, initializing MoneyManager...');
+    app = new MoneyManager();
+}
 
 // Global functions for HTML onclick events
 function showDashboard() {
-    app.showDashboard();
+    if (app) app.showDashboard();
 }
 
 function showCreateUser() {
-    app.showCreateUser();
+    if (app) app.showCreateUser();
 }
 
 function closeCreateUser() {
-    app.closeCreateUser();
+    if (app) app.closeCreateUser();
 }
 
 function contributeThisMonth() {
-    app.contributeThisMonth();
+    if (app) app.contributeThisMonth();
 }
 
 function showLoanApplication() {
-    app.showLoanApplication();
+    if (app) app.showLoanApplication();
 }
 
 function backToUserDetails() {
-    app.backToUserDetails();
+    if (app) app.backToUserDetails();
 }
 
 function closeEmailVerification() {
-    app.closeEmailVerification();
+    if (app) app.closeEmailVerification();
 }
 
 // Close modal when clicking outside
 document.addEventListener('click', (e) => {
-    if (e.target.classList.contains('modal')) {
+    if (app && e.target.classList.contains('modal')) {
         if (e.target.id === 'createUserModal') {
             app.closeCreateUser();
         } else if (e.target.id === 'emailVerificationModal') {
@@ -1115,13 +1144,13 @@ document.addEventListener('click', (e) => {
 
 // Close modal with Escape key
 document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
+    if (app && e.key === 'Escape') {
         const createUserModal = document.getElementById('createUserModal');
         const emailVerificationModal = document.getElementById('emailVerificationModal');
 
-        if (createUserModal.classList.contains('active')) {
+        if (createUserModal && createUserModal.classList.contains('active')) {
             app.closeCreateUser();
-        } else if (emailVerificationModal.classList.contains('active')) {
+        } else if (emailVerificationModal && emailVerificationModal.classList.contains('active')) {
             app.closeEmailVerification();
         }
     }
