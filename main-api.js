@@ -82,13 +82,33 @@ class MoneyManager {
       throw error;
     }
   }
-
   async loadUsers() {
     try {
+      console.log('Loading users from API...');
       const result = await this.apiCall('/users');
-      this.users = result.data || [];
+      console.log('Users API response:', result);
+
+      // Ensure we have a valid response structure
+      if (result && result.data && Array.isArray(result.data.users)) {
+        this.users = result.data.users;
+        console.log(`Loaded ${this.users.length} users`);
+      } else if (result && Array.isArray(result.data)) {
+        // Handle case where data is directly an array
+        this.users = result.data;
+        console.log(`Loaded ${this.users.length} users (direct array)`);
+      } else {
+        console.warn('Invalid API response structure for users:', result);
+        this.users = [];
+      }
     } catch (error) {
       console.error('Failed to load users:', error);
+      this.users = [];
+      // Don't throw the error, just set empty array and continue
+    }
+
+    // Final safety check to ensure users is always an array
+    if (!Array.isArray(this.users)) {
+      console.warn('Users is not an array after loadUsers, forcing to empty array');
       this.users = [];
     }
   }
@@ -196,10 +216,15 @@ class MoneyManager {
     this.loadDashboard();
     this.updateDashboardStats();
   }
-
   async loadDashboard() {
     try {
       await this.loadUsers();
+
+      // Ensure users is always an array with additional safety check
+      if (!Array.isArray(this.users)) {
+        console.warn('Users is not an array in loadDashboard, resetting to empty array');
+        this.users = [];
+      }
 
       const usersList = document.getElementById('usersList');
 
@@ -237,6 +262,21 @@ class MoneyManager {
       this.loadCharts();
     } catch (error) {
       console.error('Failed to load dashboard:', error);
+
+      // Show error state to user
+      const usersList = document.getElementById('usersList');
+      if (usersList) {
+        usersList.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-exclamation-triangle" style="color: #dc3545;"></i>
+                        <h3>Failed to Load Dashboard</h3>
+                        <p>There was an error connecting to the server. Please check your backend connection.</p>
+                        <button class="btn btn-primary" onclick="app.showDashboard()">Retry</button>
+                    </div>
+                `;
+      }
+
+      this.showToast('Failed to load dashboard. Please check backend connection.', 'error');
     }
   }
 
@@ -549,8 +589,13 @@ class MoneyManager {
     this.loadContributionsChart();
     this.loadLoansChart();
   }
-
   loadContributionsChart() {
+    // Safety check to ensure users is an array
+    if (!Array.isArray(this.users)) {
+      console.warn('Cannot load contributions chart: users is not an array');
+      return;
+    }
+
     const ctx = document.getElementById('contributionsChart').getContext('2d');
 
     const userNames = this.users.map(user => user.name);
@@ -589,8 +634,13 @@ class MoneyManager {
       }
     });
   }
-
   loadLoansChart() {
+    // Safety check to ensure users is an array
+    if (!Array.isArray(this.users)) {
+      console.warn('Cannot load loans chart: users is not an array');
+      return;
+    }
+
     const ctx = document.getElementById('loansChart').getContext('2d');
 
     const userNames = this.users.map(user => user.name);
