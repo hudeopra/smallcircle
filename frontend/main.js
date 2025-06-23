@@ -1,11 +1,12 @@
-// Money Management App - SmallCircle (API Version)
+// Money Management App - SmallCircle (Fixed API Version)
 class MoneyManager {
     constructor() {
         this.users = [];
         this.currentUserId = null;
-        this.currentLoanId = null;        this.monthlyContribution = 500; // Default monthly contribution
+        this.currentLoanId = null;
+        this.pendingUserId = null; // For email verification
+        this.monthlyContribution = 500; // Default monthly contribution
         this.interestRate = 0.20; // 20% annual interest
-        // Backend API URL - Connected to Render deployment
         this.apiBaseUrl = 'https://smallcircle-backend.onrender.com/api';
         this.init();
     }
@@ -33,7 +34,9 @@ class MoneyManager {
         document.getElementById('loanForm').addEventListener('submit', (e) => {
             e.preventDefault();
             this.applyForLoan();
-        });        // Loan Amount Input - Real-time calculation and validation
+        });
+
+        // Loan Amount Input - Real-time calculation and validation
         document.getElementById('loanAmount').addEventListener('input', (e) => {
             const amount = parseFloat(e.target.value) || 0;
             this.calculateLoanDetails(amount);
@@ -44,13 +47,17 @@ class MoneyManager {
         document.getElementById('paymentForm').addEventListener('submit', (e) => {
             e.preventDefault();
             this.makePayment();
-        });
-
-        // Payment type radio buttons
+        });    // Payment type radio buttons
         document.querySelectorAll('input[name="paymentType"]').forEach(radio => {
             radio.addEventListener('change', (e) => {
                 this.togglePartialPaymentInput(e.target.value);
             });
+        });
+
+        // Email Verification Form
+        document.getElementById('emailVerificationForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.verifyEmailAndShowDetails();
         });
     }
 
@@ -81,7 +88,9 @@ class MoneyManager {
             this.showToast(`Error: ${error.message}`, 'error');
             throw error;
         }
-    } async loadUsers() {
+    }
+
+    async loadUsers() {
         try {
             console.log('Loading users from API...');
             const result = await this.apiCall('/users');
@@ -138,7 +147,9 @@ class MoneyManager {
                 this.showToast('User with this name already exists', 'error');
             }
         }
-    }    // Loan Management
+    }
+
+    // Loan Management
     async applyForLoan() {
         const amount = parseFloat(document.getElementById('loanAmount').value);
         const description = document.getElementById('loanDescription').value.trim();
@@ -201,7 +212,10 @@ class MoneyManager {
 
     // Contribution Management
     async contributeThisMonth() {
-        if (!this.currentUserId) return;
+        if (!this.currentUserId) {
+            this.showToast('Please select a user first', 'error');
+            return;
+        }
 
         try {
             const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM format
@@ -212,14 +226,18 @@ class MoneyManager {
                 month: currentMonth
             };
 
+            console.log('Submitting contribution:', contributionData);
             const result = await this.apiCall('/contributions', 'POST', contributionData);
 
             this.showToast(`Monthly contribution of ₹${this.monthlyContribution} added!`, 'success');
             await this.loadUserDetails(this.currentUserId);
             await this.updateDashboardStats();
         } catch (error) {
+            console.error('Contribution failed:', error);
             if (error.message.includes('already contributed')) {
                 this.showToast('You have already contributed this month!', 'warning');
+            } else {
+                this.showToast(`Contribution failed: ${error.message}`, 'error');
             }
         }
     }
@@ -234,7 +252,9 @@ class MoneyManager {
         this.setActivePage('dashboard');
         this.loadDashboard();
         this.updateDashboardStats();
-    } async loadDashboard() {
+    }
+
+    async loadDashboard() {
         try {
             await this.loadUsers();
 
@@ -275,7 +295,9 @@ class MoneyManager {
                         </div>
                     </div>
                 </div>
-            `).join(''); this.loadCharts();
+            `).join('');
+
+            this.loadCharts();
         } catch (error) {
             console.error('Failed to load dashboard:', error);
 
@@ -295,11 +317,77 @@ class MoneyManager {
             this.showToast('Failed to load dashboard. Please check backend connection.', 'error');
         }
     }
-
     async showUserDetails(userId) {
-        this.currentUserId = userId;
-        this.setActivePage('userDetails');
-        await this.loadUserDetails(userId);
+        // Store the user ID for verification
+        this.pendingUserId = userId;
+
+        // Show email verification modal instead of directly showing user details
+        this.showEmailVerification(userId);
+    }
+
+    showEmailVerification(userId) {
+        // Get user info for the modal
+        const user = this.getUserById(userId);
+        if (!user) {
+            this.showToast('User not found', 'error');
+            return;
+        }
+
+        // Show the email verification modal
+        document.getElementById('emailVerificationModal').classList.add('active');
+        document.getElementById('verificationEmail').focus();
+
+        // Reset any previous error
+        document.getElementById('emailError').style.display = 'none';
+        document.getElementById('verificationEmail').value = '';
+    }
+
+    async verifyEmailAndShowDetails() {
+        const enteredEmail = document.getElementById('verificationEmail').value.trim().toLowerCase();
+        const errorElement = document.getElementById('emailError');
+
+        if (!enteredEmail) {
+            this.showToast('Please enter an email address', 'error');
+            return;
+        }
+
+        // Get the user data to check email
+        const user = this.getUserById(this.pendingUserId);
+        if (!user) {
+            this.showToast('User not found', 'error');
+            this.closeEmailVerification();
+            return;
+        }
+
+        // Check if the entered email matches the user's email
+        const userEmail = user.email ? user.email.toLowerCase() : '';
+
+        if (enteredEmail === userEmail) {
+            // Email is correct, proceed to user details
+            this.currentUserId = this.pendingUserId;
+            this.pendingUserId = null;
+
+            this.closeEmailVerification();
+            this.setActivePage('userDetails');
+            await this.loadUserDetails(this.currentUserId);
+
+            this.showToast('Email verified successfully!', 'success');
+        } else {
+            // Email is incorrect
+            errorElement.style.display = 'block';
+            errorElement.textContent = 'Incorrect email. Please try again.';
+
+            // Clear the input and focus it
+            document.getElementById('verificationEmail').value = '';
+            document.getElementById('verificationEmail').focus();
+        }
+    }
+
+    closeEmailVerification() {
+        document.getElementById('emailVerificationModal').classList.remove('active');
+        document.getElementById('emailVerificationForm').reset();
+        document.getElementById('emailError').style.display = 'none';
+        this.pendingUserId = null;
     }
 
     async loadUserDetails(userId) {
@@ -325,14 +413,31 @@ class MoneyManager {
         } catch (error) {
             console.error('Failed to load user details:', error);
         }
-    } async loadLoanHistory(userId) {
+    }
+
+    async loadLoanHistory(userId) {
         try {
             const result = await this.apiCall(`/loans?user=${userId}`);
-            const loans = result.data?.loans || [];
+            console.log('Loan history API response:', result);
+
+            // Handle different response structures with robust checking
+            let loans = [];
+            if (result && result.data && result.data.loans && Array.isArray(result.data.loans)) {
+                loans = result.data.loans;
+            } else if (result && result.data && Array.isArray(result.data)) {
+                loans = result.data;
+            } else if (result && Array.isArray(result)) {
+                loans = result;
+            } else {
+                console.warn('Unexpected loan history response structure:', result);
+                loans = [];
+            }
+
+            console.log('Processed loans array:', loans, 'Is array:', Array.isArray(loans));
 
             const loanHistory = document.getElementById('loanHistory');
 
-            if (loans.length === 0) {
+            if (!Array.isArray(loans) || loans.length === 0) {
                 loanHistory.innerHTML = `
                     <div class="empty-state">
                         <i class="fas fa-hand-holding-usd"></i>
@@ -362,15 +467,42 @@ class MoneyManager {
             `).join('');
         } catch (error) {
             console.error('Failed to load loan history:', error);
+            const loanHistory = document.getElementById('loanHistory');
+            if (loanHistory) {
+                loanHistory.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-exclamation-triangle" style="color: #dc3545;"></i>
+                        <h3>Error Loading Loans</h3>
+                        <p>Failed to load loan history</p>
+                    </div>
+                `;
+            }
         }
-    } async loadContributionHistory(userId) {
+    }
+
+    async loadContributionHistory(userId) {
         try {
             const result = await this.apiCall(`/contributions?user=${userId}`);
-            const contributions = result.data?.contributions || [];
+            console.log('Contribution history API response:', result);
+
+            // Handle different response structures with robust checking
+            let contributions = [];
+            if (result && result.data && result.data.contributions && Array.isArray(result.data.contributions)) {
+                contributions = result.data.contributions;
+            } else if (result && result.data && Array.isArray(result.data)) {
+                contributions = result.data;
+            } else if (result && Array.isArray(result)) {
+                contributions = result;
+            } else {
+                console.warn('Unexpected contribution history response structure:', result);
+                contributions = [];
+            }
+
+            console.log('Processed contributions array:', contributions, 'Is array:', Array.isArray(contributions));
 
             const contributionHistory = document.getElementById('contributionHistory');
 
-            if (contributions.length === 0) {
+            if (!Array.isArray(contributions) || contributions.length === 0) {
                 contributionHistory.innerHTML = `
                     <div class="empty-state">
                         <i class="fas fa-calendar-alt"></i>
@@ -387,13 +519,25 @@ class MoneyManager {
                         <span class="history-title">Monthly Contribution</span>
                         <span class="history-amount">₹${contrib.amount}</span>
                     </div>
-                    <div class="history-date">${new Date(contrib.date).toLocaleDateString()}</div>
+                    <div class="history-date">${new Date(contrib.createdAt || contrib.date).toLocaleDateString()}</div>
                 </div>
             `).join('');
         } catch (error) {
             console.error('Failed to load contribution history:', error);
+            const contributionHistory = document.getElementById('contributionHistory');
+            if (contributionHistory) {
+                contributionHistory.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-exclamation-triangle" style="color: #dc3545;"></i>
+                        <h3>Error Loading Contributions</h3>
+                        <p>Failed to load contribution history</p>
+                    </div>
+                `;
+            }
         }
-    } async showLoanApplication() {
+    }
+
+    async showLoanApplication() {
         // Check if user is selected
         if (!this.currentUserId) {
             this.showToast('Please select a user first', 'error');
@@ -415,11 +559,15 @@ class MoneyManager {
         if (user) {
             const loanUserInfo = document.getElementById('loanUserInfo');
             const loanUserName = document.getElementById('loanUserName');
-            loanUserName.textContent = user.name;
-            loanUserInfo.style.display = 'block';
+            if (loanUserInfo && loanUserName) {
+                loanUserName.textContent = user.name;
+                loanUserInfo.style.display = 'block';
+            }
             console.log('Applying loan for user:', user.name);
         }
-    } async updateMaxLoanAmount() {
+    }
+
+    async updateMaxLoanAmount() {
         try {
             // Use the same logic as dashboard - get totals from API response
             const result = await this.apiCall('/dashboard');
@@ -440,28 +588,31 @@ class MoneyManager {
             document.getElementById('totalLoanPayments').textContent = `₹${totalLoanPayments}`;
             document.getElementById('totalActiveLoansLoan').textContent = `₹${totalActiveLoanAmounts}`;
             document.getElementById('availableFundsLoan').textContent = `₹${maxLoanAmount}`;
+
             // Update the input max attribute and display text
             const loanInput = document.getElementById('loanAmount');
             const maxLoanText = document.getElementById('maxLoanText');
 
-            loanInput.setAttribute('max', maxLoanAmount);
-            maxLoanText.textContent = `Maximum loan amount: ₹${maxLoanAmount.toLocaleString()}`;
+            if (loanInput && maxLoanText) {
+                loanInput.setAttribute('max', maxLoanAmount);
+                maxLoanText.textContent = `Maximum loan amount: ₹${maxLoanAmount.toLocaleString()}`;
 
-            // If there's not enough money available, show warning
-            if (maxLoanAmount <= 0) {
-                maxLoanText.innerHTML = `<span style="color: #dc3545;">No funds available for loans. Need more contributions!</span>`;
-                loanInput.disabled = true;
-                const submitBtn = document.querySelector('#loanForm button[type="submit"]');
-                if (submitBtn) submitBtn.disabled = true;
-            } else {
-                loanInput.disabled = false;
-                const submitBtn = document.querySelector('#loanForm button[type="submit"]');
-                if (submitBtn) submitBtn.disabled = false;
+                // If there's not enough money available, show warning
+                if (maxLoanAmount <= 0) {
+                    maxLoanText.innerHTML = `<span style="color: #dc3545;">No funds available for loans. Need more contributions!</span>`;
+                    loanInput.disabled = true;
+                    const submitBtn = document.querySelector('#loanForm button[type="submit"]');
+                    if (submitBtn) submitBtn.disabled = true;
+                } else {
+                    loanInput.disabled = false;
+                    const submitBtn = document.querySelector('#loanForm button[type="submit"]');
+                    if (submitBtn) submitBtn.disabled = false;
 
-                // Validate current amount if any
-                const currentAmount = parseFloat(loanInput.value) || 0;
-                if (currentAmount > 0) {
-                    this.validateLoanAmount(currentAmount);
+                    // Validate current amount if any
+                    const currentAmount = parseFloat(loanInput.value) || 0;
+                    if (currentAmount > 0) {
+                        this.validateLoanAmount(currentAmount);
+                    }
                 }
             }
 
@@ -469,16 +620,27 @@ class MoneyManager {
         } catch (error) {
             console.error('Failed to update max loan amount:', error);
             // Set default values if error
-            document.getElementById('totalContributionsLoan').textContent = '₹0';
-            document.getElementById('totalLoanPayments').textContent = '₹0';
-            document.getElementById('totalActiveLoansLoan').textContent = '₹0';
-            document.getElementById('availableFundsLoan').textContent = '₹0';
+            const elements = [
+                'totalContributionsLoan',
+                'totalLoanPayments',
+                'totalActiveLoansLoan',
+                'availableFundsLoan'
+            ];
+
+            elements.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) element.textContent = '₹0';
+            });
 
             const maxLoanText = document.getElementById('maxLoanText');
-            maxLoanText.innerHTML = `<span style="color: #dc3545;">Error loading fund information!</span>`;
+            if (maxLoanText) {
+                maxLoanText.innerHTML = `<span style="color: #dc3545;">Error loading fund information!</span>`;
+            }
             return 0;
         }
-    } calculateLoanDetails(amount) {
+    }
+
+    calculateLoanDetails(amount) {
         if (!amount || amount <= 0) {
             document.getElementById('calcPrincipal').textContent = '₹0';
             document.getElementById('calcInterest').textContent = '₹0';
@@ -492,6 +654,36 @@ class MoneyManager {
         document.getElementById('calcPrincipal').textContent = `₹${amount.toLocaleString()}`;
         document.getElementById('calcInterest').textContent = `₹${Math.round(monthlyInterest).toLocaleString()}`;
         document.getElementById('calcTotal').textContent = `₹${Math.round(total).toLocaleString()}`;
+    }
+
+    validateLoanAmount(amount) {
+        const loanInput = document.getElementById('loanAmount');
+        const maxLoanText = document.getElementById('maxLoanText');
+        const submitBtn = document.querySelector('#loanForm button[type="submit"]');
+
+        if (!loanInput || !maxLoanText) return;
+
+        const maxAmount = parseFloat(loanInput.getAttribute('max')) || 0;
+
+        // Reset styles
+        loanInput.style.borderColor = '';
+
+        if (amount < 100 && amount > 0) {
+            loanInput.style.borderColor = '#dc3545';
+            maxLoanText.innerHTML = `<span style="color: #dc3545;">Minimum loan amount is ₹100</span>`;
+            if (submitBtn) submitBtn.disabled = true;
+        } else if (amount > maxAmount && maxAmount > 0) {
+            loanInput.style.borderColor = '#dc3545';
+            maxLoanText.innerHTML = `<span style="color: #dc3545;">Amount exceeds available funds (₹${maxAmount.toLocaleString()})</span>`;
+            if (submitBtn) submitBtn.disabled = true;
+        } else if (amount >= 100 && amount <= maxAmount) {
+            loanInput.style.borderColor = '#28a745';
+            maxLoanText.innerHTML = `<span style="color: #28a745;">✓ Valid loan amount</span>`;
+            if (submitBtn) submitBtn.disabled = false;
+        } else {
+            maxLoanText.textContent = `Maximum loan amount: ₹${maxAmount.toLocaleString()}`;
+            if (submitBtn) submitBtn.disabled = false;
+        }
     }
 
     backToUserDetails() {
@@ -534,14 +726,31 @@ class MoneyManager {
         } catch (error) {
             console.error('Failed to load loan details:', error);
         }
-    } async loadPaymentHistory(loanId) {
+    }
+
+    async loadPaymentHistory(loanId) {
         try {
             const result = await this.apiCall(`/payments?loan=${loanId}`);
-            const payments = result.data?.payments || [];
+            console.log('Payment history API response:', result);
+
+            // Handle different response structures with robust checking
+            let payments = [];
+            if (result && result.data && result.data.payments && Array.isArray(result.data.payments)) {
+                payments = result.data.payments;
+            } else if (result && result.data && Array.isArray(result.data)) {
+                payments = result.data;
+            } else if (result && Array.isArray(result)) {
+                payments = result;
+            } else {
+                console.warn('Unexpected payment history response structure:', result);
+                payments = [];
+            }
+
+            console.log('Processed payments array:', payments, 'Is array:', Array.isArray(payments));
 
             const paymentHistory = document.getElementById('paymentHistory');
 
-            if (payments.length === 0) {
+            if (!Array.isArray(payments) || payments.length === 0) {
                 paymentHistory.innerHTML = `
                     <div class="empty-state">
                         <i class="fas fa-receipt"></i>
@@ -558,12 +767,22 @@ class MoneyManager {
                         <span class="payment-title">${payment.type === 'full' ? 'Full Payment' : 'Partial Payment'}</span>
                         <span class="payment-amount-paid">₹${payment.amount}</span>
                     </div>
-                    <div class="payment-date">${new Date(payment.date).toLocaleDateString()}</div>
+                    <div class="payment-date">${new Date(payment.createdAt || payment.date).toLocaleDateString()}</div>
                     ${payment.note ? `<div class="payment-note">"${payment.note}"</div>` : ''}
                 </div>
             `).join('');
         } catch (error) {
             console.error('Failed to load payment history:', error);
+            const paymentHistory = document.getElementById('paymentHistory');
+            if (paymentHistory) {
+                paymentHistory.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-exclamation-triangle" style="color: #dc3545;"></i>
+                        <h3>Error Loading Payments</h3>
+                        <p>Failed to load payment history</p>
+                    </div>
+                `;
+            }
         }
     }
 
@@ -594,7 +813,7 @@ class MoneyManager {
             }
 
             const paymentData = {
-                loanId: this.currentLoanId,
+                loan: this.currentLoanId,  // Backend expects 'loan', not 'loanId'
                 amount: paymentAmount,
                 type: paymentType,
                 note: paymentNote
@@ -614,6 +833,7 @@ class MoneyManager {
             this.togglePartialPaymentInput('full');
         } catch (error) {
             console.error('Payment failed:', error);
+            this.showToast(`Payment failed: ${error.message}`, 'error');
         }
     }
 
@@ -643,10 +863,12 @@ class MoneyManager {
     loadCharts() {
         this.loadContributionsChart();
         this.loadLoansChart();
-    } loadContributionsChart() {
+    }
+
+    loadContributionsChart() {
         // Safety check to ensure users is an array
         if (!Array.isArray(this.users)) {
-            console.warn('Cannot load contributions chart: users is not an array');
+            console.warn('Cannot load contributions chart: users is not array');
             return;
         }
 
@@ -687,10 +909,12 @@ class MoneyManager {
                 }
             }
         });
-    } loadLoansChart() {
+    }
+
+    loadLoansChart() {
         // Safety check to ensure users is an array
         if (!Array.isArray(this.users)) {
-            console.warn('Cannot load loans chart: users is not an array');
+            console.warn('Cannot load loans chart: users is not array');
             return;
         }
 
@@ -788,33 +1012,6 @@ class MoneyManager {
             day: 'numeric'
         });
     }
-
-    validateLoanAmount(amount) {
-        const loanInput = document.getElementById('loanAmount');
-        const maxLoanText = document.getElementById('maxLoanText');
-        const submitBtn = document.querySelector('#loanForm button[type="submit"]');
-        const maxAmount = parseFloat(loanInput.getAttribute('max')) || 0;
-
-        // Reset styles
-        loanInput.style.borderColor = '';
-
-        if (amount < 100 && amount > 0) {
-            loanInput.style.borderColor = '#dc3545';
-            maxLoanText.innerHTML = `<span style="color: #dc3545;">Minimum loan amount is ₹100</span>`;
-            if (submitBtn) submitBtn.disabled = true;
-        } else if (amount > maxAmount && maxAmount > 0) {
-            loanInput.style.borderColor = '#dc3545';
-            maxLoanText.innerHTML = `<span style="color: #dc3545;">Amount exceeds available funds (₹${maxAmount.toLocaleString()})</span>`;
-            if (submitBtn) submitBtn.disabled = true;
-        } else if (amount >= 100 && amount <= maxAmount) {
-            loanInput.style.borderColor = '#28a745';
-            maxLoanText.innerHTML = `<span style="color: #28a745;">✓ Valid loan amount</span>`;
-            if (submitBtn) submitBtn.disabled = false;
-        } else {
-            maxLoanText.textContent = `Maximum loan amount: ₹${maxAmount.toLocaleString()}`;
-            if (submitBtn) submitBtn.disabled = false;
-        }
-    }
 }
 
 // Initialize the app
@@ -845,21 +1042,36 @@ function backToUserDetails() {
     app.backToUserDetails();
 }
 
+function closeEmailVerification() {
+    app.closeEmailVerification();
+}
+
 // Close modal when clicking outside
 document.addEventListener('click', (e) => {
     if (e.target.classList.contains('modal')) {
-        app.closeCreateUser();
+        if (e.target.id === 'createUserModal') {
+            app.closeCreateUser();
+        } else if (e.target.id === 'emailVerificationModal') {
+            app.closeEmailVerification();
+        }
     }
 });
 
 // Close modal with Escape key
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-        app.closeCreateUser();
+        const createUserModal = document.getElementById('createUserModal');
+        const emailVerificationModal = document.getElementById('emailVerificationModal');
+
+        if (createUserModal.classList.contains('active')) {
+            app.closeCreateUser();
+        } else if (emailVerificationModal.classList.contains('active')) {
+            app.closeEmailVerification();
+        }
     }
 });
 
-console.log('SmallCircle Money Management App Loaded Successfully! (API Version)');
+console.log('SmallCircle Money Management App Loaded Successfully! (Fixed API Version)');
 console.log('Features:');
 console.log('- User Creation and Management');
 console.log('- Monthly Contributions (₹500 default)');
@@ -869,3 +1081,5 @@ console.log('- Visual Dashboard with Charts');
 console.log('- Loan and Contribution History');
 console.log('- Responsive Design');
 console.log('- Backend API Integration');
+console.log('- Robust Error Handling');
+console.log('- Email-based Security for User Access');

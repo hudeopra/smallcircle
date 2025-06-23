@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SmallCircle - Money Management</title>
-    <link rel="stylesheet" href="frontend/style.css" />
+    <link rel="stylesheet" href="style.css" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
@@ -195,17 +195,27 @@
               </div>
             </div>
           </div>
-
           <form id="loanForm" class="loan-form">
+            <div
+              class="user-info"
+              id="loanUserInfo"
+              style="
+                background: #f8f9fa;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+                display: none;
+              "
+            >
+              <h4 style="margin: 0 0 5px 0; color: #495057">Applying for:</h4>
+              <p style="margin: 0; font-weight: 500" id="loanUserName">
+                User Name
+              </p>
+            </div>
+
             <div class="form-group">
               <label for="loanAmount">Loan Amount (₹)</label>
-              <input
-                type="number"
-                id="loanAmount"
-                required
-                min="100"
-                id="loanAmountInput"
-              />
+              <input type="number" id="loanAmount" required min="100" />
               <small id="maxLoanText">Maximum loan amount: ₹0</small>
             </div>
 
@@ -421,12 +431,44 @@
             <button type="submit" class="btn btn-primary">Create User</button>
           </div>
         </form>
+      </div>    </div>
+
+    <!-- Email Verification Modal -->
+    <div id="emailVerificationModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>🔐 Email Verification Required</h3>
+          <span class="close" onclick="closeEmailVerification()">&times;</span>
+        </div>
+        <form id="emailVerificationForm">
+          <div class="form-group">
+            <label for="verificationEmail">Enter your email to access user details:</label>
+            <input
+              type="email"
+              id="verificationEmail"
+              required
+              placeholder="Enter your email address"
+              autocomplete="email"
+            />
+            <small id="emailError" style="color: #dc3545; display: none;">Incorrect email. Please try again.</small>
+          </div>
+          <div class="form-actions">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              onclick="closeEmailVerification()"
+            >
+              Cancel
+            </button>
+            <button type="submit" class="btn btn-primary">Verify & Access</button>
+          </div>
+        </form>
       </div>
     </div>
 
     <!-- Toast Notifications -->
     <div id="toast" class="toast"></div>
 
-    <script src="frontend/main.js"></script>
+    <script src="main.js"></script>
   </body>
 </html>

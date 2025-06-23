@@ -434,6 +434,45 @@
       </div>
     </div>
 
+    <!-- Email Verification Modal -->
+    <div id="emailVerificationModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>🔐 Email Verification Required</h3>
+          <span class="close" onclick="closeEmailVerification()">&times;</span>
+        </div>
+        <form id="emailVerificationForm">
+          <div class="form-group">
+            <label for="verificationEmail"
+              >Enter your email to access user details:</label
+            >
+            <input
+              type="email"
+              id="verificationEmail"
+              required
+              placeholder="Enter your email address"
+              autocomplete="email"
+            />
+            <small id="emailError" style="color: #dc3545; display: none"
+              >Incorrect email. Please try again.</small
+            >
+          </div>
+          <div class="form-actions">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              onclick="closeEmailVerification()"
+            >
+              Cancel
+            </button>
+            <button type="submit" class="btn btn-primary">
+              Verify & Access
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <!-- Toast Notifications -->
     <div id="toast" class="toast"></div>
 

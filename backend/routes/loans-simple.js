@@ -12,27 +12,40 @@ router.get('/available-funds', async (req, res) => {
     const contributions = await Contribution.aggregate([
       { $group: { _id: null, total: { $sum: '$amount' } } }
     ]);
-    const totalContributions = contributions.length > 0 ? contributions[0].total : 0;
-
-    // Get total payments
+    const totalContributions = contributions.length > 0 ? contributions[0].total : 0;    // Get all completed payments
     const payments = await Payment.aggregate([
+      { $match: { status: 'completed' } },
       { $group: { _id: null, total: { $sum: '$amount' } } }
     ]);
     const totalRepayments = payments.length > 0 ? payments[0].total : 0;
+
+    // Calculate total interest earned from completed loans
+    const completedLoans = await Loan.find({ status: 'paid' });
+    let totalInterestEarned = 0;
+    
+    for (const loan of completedLoans) {
+      const loanPayments = await Payment.aggregate([
+        { $match: { loan: loan._id, status: 'completed' } },
+        { $group: { _id: null, total: { $sum: '$amount' } } }
+      ]);
+      const totalPaidForLoan = loanPayments.length > 0 ? loanPayments[0].total : 0;
+      const interestForLoan = Math.max(0, totalPaidForLoan - loan.amount);
+      totalInterestEarned += interestForLoan;
+    }
 
     // Get active loans (original loan amounts, not remaining)
     const activeLoans = await Loan.find({ status: 'active' });
     const totalActiveLoans = activeLoans.reduce((sum, loan) => sum + loan.amount, 0);
 
-    // Available funds = contributions + repayments - active loan amounts
-    const availableFunds = Math.max(0, totalContributions + totalRepayments - totalActiveLoans);
+    // Available funds = contributions + interest earned - active loan principals
+    const availableFunds = Math.max(0, totalContributions + totalInterestEarned - totalActiveLoans);
 
     res.json({
-      success: true,
-      data: {
+      success: true,      data: {
         availableFunds,
         totalContributions,
         totalRepayments,
+        totalInterestEarned,
         totalActiveLoans
       }
     });

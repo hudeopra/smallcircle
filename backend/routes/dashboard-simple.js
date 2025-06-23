@@ -44,31 +44,26 @@ router.get('/', async (req, res) => {
     ]);
 
     const totalPaymentsAmount = totalPayments.length > 0 ? totalPayments[0].total : 0;
-    console.log('Total payments:', totalPaymentsAmount);    // Calculate available funds
-    const availableFunds = totalAllTimeContributions + totalPaymentsAmount - totalLoanAmount;    // Calculate total interest earned/accrued
-    // Show the interest that's built into the loan system
-
+    console.log('Total payments:', totalPaymentsAmount);    // Calculate total interest earned (ONLY from completed loans)
     let totalInterestEarned = 0;
 
-    // Get all loans (active and paid)
-    const allLoans = await Loan.find({});
+    // Get completed loans and calculate interest earned from them
+    const completedLoans = await Loan.find({ status: 'paid' });
 
-    for (const loan of allLoans) {
-      // For active loans: interest = remainingAmount - originalAmount  
-      // For paid loans: interest = totalPayments - originalAmount
-
-      if (loan.status === 'active') {
-        // Interest accrued in remaining balance
-        const interestInRemaining = Math.max(0, loan.remainingAmount - loan.amount);
-        totalInterestEarned += interestInRemaining;
-      }
-
-      // Add interest from payments made (payments above original principal)
+    for (const loan of completedLoans) {
+      // Only count interest from loans that have been fully paid
       const loanPayments = await Payment.find({ loan: loan._id, status: 'completed' });
       const totalPaidForLoan = loanPayments.reduce((sum, payment) => sum + payment.amount, 0);
-      const interestFromPayments = Math.max(0, totalPaidForLoan - loan.amount);
-      totalInterestEarned += interestFromPayments;
+      
+      // Interest is only the amount paid above the original principal
+      const interestFromLoan = Math.max(0, totalPaidForLoan - loan.amount);
+      totalInterestEarned += interestFromLoan;
     }
+
+    // Calculate available funds correctly
+    // Available funds = contributions + interest earned from completed loans - active loan principals
+    const activeLoansOriginalAmount = activeLoans.reduce((sum, loan) => sum + loan.amount, 0);
+    const availableFunds = totalAllTimeContributions + totalInterestEarned - activeLoansOriginalAmount;
 
     console.log('Total interest earned/accrued:', totalInterestEarned);
     console.log('Sending response...'); res.json({
