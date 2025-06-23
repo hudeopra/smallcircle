@@ -15,6 +15,7 @@ A comprehensive money management application designed for small groups or commun
 ## 🏗️ Architecture
 
 ### Frontend (Static)
+
 - **Technology**: HTML, CSS, JavaScript (Vanilla)
 - **Features**: Single Page Application with dynamic charts
 - **Charts**: Chart.js for data visualization
@@ -22,6 +23,7 @@ A comprehensive money management application designed for small groups or commun
 - **Hosting**: Can be hosted anywhere (Netlify, Vercel, GitHub Pages, etc.)
 
 ### Backend (Dynamic API)
+
 - **Technology**: Node.js, Express.js, MongoDB
 - **Database**: MongoDB with Mongoose ODM
 - **Features**: RESTful API with CORS support
@@ -59,6 +61,7 @@ SmallCircle/
 ## 🚀 Getting Started
 
 ### Prerequisites
+
 - Node.js (v14 or higher)
 - MongoDB (local or cloud instance)
 - Git
@@ -66,16 +69,19 @@ SmallCircle/
 ### Backend Setup
 
 1. **Navigate to backend directory:**
+
    ```bash
    cd backend
    ```
 
 2. **Install dependencies:**
+
    ```bash
    npm install
    ```
 
 3. **Create environment file:**
+
    ```bash
    # Create .env file with:
    MONGODB_URI=mongodb://localhost:27017/smallcircle
@@ -93,17 +99,19 @@ SmallCircle/
 ### Frontend Setup
 
 1. **Navigate to frontend directory:**
+
    ```bash
    cd frontend
    ```
 
 2. **Update API URL in main.js:**
+
    ```javascript
    // For local development:
-   this.apiBaseUrl = 'http://localhost:5000/api';
-   
+   this.apiBaseUrl = "http://localhost:5000/api";
+
    // For production (update with your backend URL):
-   this.apiBaseUrl = 'https://your-backend-url.com/api';
+   this.apiBaseUrl = "https://your-backend-url.com/api";
    ```
 
 3. **Serve the frontend:**
@@ -118,6 +126,7 @@ SmallCircle/
 2. **Create new Web Service on Render**
 3. **Connect GitHub repository**
 4. **Configure build settings:**
+
    - Build Command: `npm install`
    - Start Command: `npm start`
    - Root Directory: `backend`
@@ -138,40 +147,48 @@ SmallCircle/
 ## 📊 API Endpoints
 
 ### Users
+
 - `GET /api/users` - Get all users
 - `POST /api/users` - Create new user
 - `GET /api/users/:id` - Get user details
 
 ### Contributions
+
 - `GET /api/contributions` - Get contributions
 - `POST /api/contributions` - Add contribution
 
 ### Loans
+
 - `GET /api/loans` - Get loans
 - `POST /api/loans` - Apply for loan
 - `GET /api/loans/:id` - Get loan details
 - `GET /api/loans/available-funds` - Get available funds
 
 ### Payments
+
 - `GET /api/payments` - Get payments
 - `POST /api/payments` - Make payment
 
 ### Dashboard
+
 - `GET /api/dashboard` - Get dashboard statistics
 
 ## 💰 Business Logic
 
 ### Interest Calculation
+
 - **Annual Rate**: 20%
 - **Monthly Rate**: 20% ÷ 12 = 1.67%
 - **Formula**: `Total Payable = Principal + (Principal × Monthly Rate)`
 
 ### Loan Eligibility
+
 - **Minimum Loan**: ₹100
 - **Maximum Loan**: Total Available Funds
 - **Available Funds**: `Total Contributions + Total Payments - Active Loan Amounts`
 
 ### Monthly Contributions
+
 - **Default Amount**: ₹500
 - **Frequency**: Once per month per user
 - **Tracking**: By month (YYYY-MM format)
@@ -179,12 +196,14 @@ SmallCircle/
 ## 🛠️ Technologies Used
 
 ### Frontend
+
 - HTML5, CSS3, JavaScript (ES6+)
 - Chart.js for data visualization
 - Font Awesome for icons
 - Responsive CSS Grid/Flexbox
 
 ### Backend
+
 - Node.js
 - Express.js
 - MongoDB with Mongoose

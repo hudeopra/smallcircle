@@ -6,7 +6,7 @@ class MoneyManager {
     this.currentLoanId = null;
     this.monthlyContribution = 500; // Default monthly contribution
     this.interestRate = 0.20; // 20% annual interest
-    this.apiBaseUrl = 'http://localhost:5000/api';
+    this.apiBaseUrl = 'https://smallcircle-backend.onrender.com/api';
     this.init();
   }
 
